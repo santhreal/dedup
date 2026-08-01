@@ -1,0 +1,103 @@
+[workspace]
+
+[package]
+name = "santh-dedup"
+version = "0.1.1"
+edition = "2021"
+rust-version = "1.85"
+authors = ["Santh Project <contact@santh.dev>"]
+license = "MIT OR Apache-2.0"
+homepage = "https://santh.dev"
+repository = "https://github.com/santhreal/dedup"
+description = "High-performance dataset deduplication for ML training data using MinHash + LSH"
+keywords = [ "deduplication", "minhash", "lsh", "ml" ]
+categories = ["algorithms", "science", "text-processing"]
+readme = "README.md"
+
+[lib]
+name = "dedup"
+
+[dependencies]
+tenshift-core = { version = "0.1.1" }
+thiserror = "=2.0.18"
+tracing = "=0.1.44"
+serde = { version = "=1.0.228", features = ["derive"], optional = true }
+
+[dev-dependencies]
+faultkit = { version = "0.1.1" }
+tempfile = "=3.27.0"
+criterion = { version = "=0.5.1", features = ["html_reports"] }
+proptest = "=1.9.0"
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
+
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
+
+[[bench]]
+name = "minhash"
+harness = false
+
+[[test]]
+name = "adversarial"
+path = "tests/adversarial/test_depth_adversarial.rs"
+
+[[test]]
+name = "audit"
+path = "tests/adversarial/test_audit.rs"
+
+[[test]]
+name = "crash"
+path = "tests/crash/test_depth_crash.rs"
+
+[[test]]
+name = "concurrent"
+path = "tests/concurrent/test_depth_concurrent.rs"
+
+
+[lints.rust]
+missing_docs = "warn"
+
+[[test]]
+name = "unit_comprehensive_tests"
+path = "tests/unit/comprehensive_tests.rs"
+
+[[test]]
+name = "unit"
+path = "tests/unit/mod.rs"
+
+[[test]]
+name = "unit_test_impossible"
+path = "tests/unit/test_impossible.rs"
+
+[[test]]
+name = "adversarial_adversarial_dedup"
+path = "tests/adversarial/adversarial_dedup.rs"
+
+[[test]]
+name = "adversarial_break_it"
+path = "tests/adversarial/break_it.rs"
+
+[[test]]
+name = "adversarial_mod"
+path = "tests/adversarial/mod.rs"
+
+[[test]]
+name = "integration_integration_tests"
+path = "tests/integration/integration_tests.rs"
+
+[[test]]
+name = "integration"
+path = "tests/integration/mod.rs"
+
+[[test]]
+name = "property_invariants"
+path = "tests/property/invariants.rs"
+
+[[test]]
+name = "property"
+path = "tests/property/mod.rs"
+
