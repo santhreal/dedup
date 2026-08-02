@@ -25,3 +25,9 @@
 - Configurable signature size, band count, shingle size, and similarity threshold.
 - Fast hash family using Mersenne-prime modular arithmetic.
 - Adversarial hardening: bucket size limits and doc-id bounds.
+
+## [0.1.2] - 2026-08-02
+
+### Fixed
+- README examples were stale or did not compile against the real API. They are rewritten and wired as doctests, so documentation drift now fails `cargo test`.
+

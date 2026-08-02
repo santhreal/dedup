@@ -19,6 +19,8 @@ High-performance dataset deduplication for ML training data using MinHash + LSH.
 
 ```rust
 use dedup::{Config, DedupTransformer};
+use dedup::tenshift::Sample;
+use tenshift_core::sample::Tensor;
 
 let config = Config::default()
     .with_similarity_threshold(0.9);
@@ -26,16 +28,18 @@ let config = Config::default()
 let mut dedup = DedupTransformer::new(config)?;
 
 // Add documents
-dedup.push(sample1);
-dedup.push(sample2);
+dedup.push(Sample::new().with("text", Tensor::bytes(b"the quick brown fox".to_vec())));
+dedup.push(Sample::new().with("text", Tensor::bytes(b"the quick brown fox".to_vec())));
 
-// Get deduplicated results
+// Get deduplicated results: the exact duplicate collapses to one entry.
 let unique = dedup.finish_batch();
+assert_eq!(unique.len(), 1);
+# Ok::<(), dedup::Error>(())
 ```
 
 ## How It Works
 
-```
+```text
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌─────────────┐
 │   Shingle   │────▶│   MinHash    │────▶│  LSH Bands  │────▶│   Cluster   │
 │  (k-grams)  │     │  (fast hash) │     │  (buckets)  │     │    Output   │
@@ -50,14 +54,13 @@ let unique = dedup.finish_batch();
 ## Configuration
 
 ```rust
-use dedup::Config;
-
-let config = Config::new(
+let config = dedup::Config::new(
     128,    // signature size (hash functions)
     16,     // LSH bands
     5,      // shingle size
     0.9,    // similarity threshold
 )?;
+# Ok::<(), dedup::Error>(())
 ```
 
 ### Parameter Guide
@@ -72,18 +75,28 @@ let config = Config::new(
 ## tenshift Integration
 
 ```rust
-use dedup::StatefulDedupTransform;
+use dedup::{Config, StatefulDedupTransform};
+use dedup::tenshift::Sample;
+use tenshift_core::sample::Tensor;
 use tenshift_core::transform::StatefulTransform;
 
+let config = Config::default();
 let mut dedup = StatefulDedupTransform::new(config)?;
 
 // In your pipeline
+let samples = vec![
+    Sample::new().with("text", Tensor::bytes(b"hello world".to_vec())),
+    Sample::new().with("text", Tensor::bytes(b"hello world".to_vec())),
+];
 for sample in samples {
     let output = dedup.push(sample);
     // output is empty until finish() is called
+    assert!(output.is_empty());
 }
 
 let unique = dedup.finish();
+assert_eq!(unique.len(), 1);
+# Ok::<(), dedup::Error>(())
 ```
 
 ## Performance

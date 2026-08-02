@@ -2,7 +2,7 @@
 
 [package]
 name = "santh-dedup"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Santh Project <contact@santh.dev>"]
@@ -24,7 +24,7 @@ tracing = "=0.1.44"
 serde = { version = "=1.0.228", features = ["derive"], optional = true }
 
 [dev-dependencies]
-faultkit = { version = "0.1.1" }
+faultkit = { version = "0.2.0" }
 tempfile = "=3.27.0"
 criterion = { version = "=0.5.1", features = ["html_reports"] }
 proptest = "=1.9.0"
