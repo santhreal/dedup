@@ -37,7 +37,13 @@ impl MinHashSignature {
     /// of the original sets.
     #[must_use]
     pub fn similarity(&self, other: &Self) -> f64 {
+
         if self.values.len() != other.values.len() || self.values.is_empty() {
+            warn!(
+                self_len = self.values.len(),
+                other_len = other.values.len(),
+                "MinHashSignature::similarity called with mismatched or empty signature lengths"
+            );
             return 0.0;
         }
 
@@ -221,7 +227,6 @@ impl MinHasher {
 
 /// Compute exact Jaccard similarity between two sets.
 #[must_use]
-#[allow(dead_code)]
 pub fn exact_jaccard_similarity<T: Ord + Clone + std::hash::Hash>(a: &[T], b: &[T]) -> f64 {
     if a.is_empty() && b.is_empty() {
         return 1.0;
@@ -244,7 +249,6 @@ pub fn exact_jaccard_similarity<T: Ord + Clone + std::hash::Hash>(a: &[T], b: &[
 /// The variance of MinHash similarity estimation is approximately:
 /// Var(ŝ) ≈ s(1-s)/k where s is true similarity and k is signature size.
 #[must_use]
-#[allow(dead_code)]
 pub fn expected_error(similarity: f64, signature_size: usize) -> f64 {
     let s = similarity.clamp(0.0, 1.0);
     let k = signature_size as f64;
@@ -472,5 +476,19 @@ mod tests {
         
         // Should be high but not perfect
         assert!(estimated_sim > 0.5 && estimated_sim < 1.0);
+    }
+    #[test]
+    fn test_exact_jaccard_similarity_and_expected_error() {
+        let set1 = vec!["apple", "banana", "cherry"];
+        let set2 = vec!["banana", "cherry", "date"];
+        // Intersection = 2, Union = 4 -> Jaccard = 0.5
+        let sim = exact_jaccard_similarity(&set1, &set2);
+        assert!((sim - 0.5).abs() < f64::EPSILON);
+
+        let err = expected_error(0.5, 100);
+        assert!((err - 0.05).abs() < 1e-4);
+
+        assert_eq!(exact_jaccard_similarity::<&str>(&[], &[]), 1.0);
+        assert_eq!(exact_jaccard_similarity(&["a"], &[]), 0.0);
     }
 }

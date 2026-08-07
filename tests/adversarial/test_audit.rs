@@ -3,7 +3,6 @@
 use dedup::{Config, DedupTransformer, LshIndex, MinHashSignature, MinHasher};
 use dedup::tenshift::Sample;
 use tenshift_core::sample::Tensor;
-use std::collections::HashSet;
 
 fn create_text_sample(text: impl Into<String>, idx: u64) -> Sample {
     Sample::new()
@@ -174,7 +173,7 @@ fn test_audit_exact_threshold_clustering() {
     let mut index = LshIndex::new(&config).unwrap();
     
     // sig1 and sig2 have exactly same band 1, different band 2
-    let mut v1 = vec![0; 128];
+    let v1 = vec![0; 128];
     let mut v2 = vec![0; 128];
     // Modify some values to get exact Jaccard
     for i in 0..128 {

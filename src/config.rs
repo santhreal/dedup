@@ -23,6 +23,7 @@ use crate::error::{Error, Result};
 /// mistaken configuration into gigabytes of allocation.
 pub const MAX_SIGNATURE_SIZE: usize = 1 << 16;
 
+/// Configuration for MinHash and LSH deduplication parameters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Config {
     /// Number of hash functions (signature size).

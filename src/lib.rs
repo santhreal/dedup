@@ -77,7 +77,7 @@ pub use config::Config;
 pub use error::{Error, Result};
 pub use cluster::DuplicateCluster;
 pub use lsh::LshIndex;
-pub use minhash::{MinHashSignature, MinHasher};
+pub use minhash::{exact_jaccard_similarity, expected_error, MinHashSignature, MinHasher};
 pub use shingle::ShingleIterator;
 pub use fast_hash::{hash_bytes, FastHasher};
 pub use transform::{DedupTransformer, StatefulDedupTransform};

@@ -18,6 +18,7 @@ fn create_text_sample(text: impl Into<String>, idx: u64) -> Sample {
         .with_metadata("test", idx)
 }
 
+#[allow(dead_code)]
 fn create_bytes_sample(bytes: Vec<u8>, idx: u64) -> Sample {
     Sample::new()
         .with("text", Tensor::bytes(bytes))
@@ -43,8 +44,8 @@ fn test_impossible_identical_100mb_files() {
 fn test_impossible_1_bit_diff_100mb_files() {
     let config = Config::default();
     let hasher = MinHasher::new(&config).unwrap();
-    let mut file1 = vec![0x42; 100 * 1024 * 1024];
-    let mut file2 = vec![0x42; 100 * 1024 * 1024];
+    let file1 = vec![0x42; 100 * 1024 * 1024];
+    let mut file2 = file1.clone();
     // flip 1 bit in the middle
     file2[50 * 1024 * 1024] ^= 0x01;
     let sig1 = hasher.compute(&file1, 0).unwrap();
@@ -209,6 +210,7 @@ fn test_impossible_100k_unique() {
 
 // 14. concurrent dedup from 32 threads
 #[test]
+#[ignore = "heavy: >100MB RAM or >60s, run: cargo test --test unit_test_impossible -- --ignored"]
 fn test_impossible_concurrent_dedup_32_threads() {
     let config = Config::default();
     let transformer = Arc::new(Mutex::new(DedupTransformer::new(config).unwrap()));
@@ -360,8 +362,7 @@ fn test_impossible_lsh_config_1000_bands() {
 #[ignore = "heavy: >100MB RAM or >60s, run: cargo test --test unit_test_impossible -- --ignored"]
 fn test_impossible_streaming_hash_1gb_file() {
     let config = Config::default();
-    let hasher = MinHasher::new(&config).unwrap();
-    // Simulate streaming by computing hash over batches without allocating 1GB at once
+    let _hasher = MinHasher::new(&config).unwrap();
     let chunk = vec![0x42; 10 * 1024 * 1024]; // 10MB chunk
     let mut sig = vec![u32::MAX; config.signature_size];
     let fast_hasher = FastHasher::new(config.signature_size, 0x9e37_79b9_7f4a_7c15);

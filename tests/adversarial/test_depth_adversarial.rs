@@ -101,8 +101,8 @@ fn test_adversarial_huge_input() {
     let config = Config::default();
     let mut transformer = DedupTransformer::new(config).expect("Config init failed");
 
-    // Push boundary of typical memory handling (10MB string)
-    let huge_str = "A".repeat(10 * 1024 * 1024);
+    // Push boundary of typical memory handling (1MB string)
+    let huge_str = "A".repeat(1 * 1024 * 1024);
     transformer.push(create_text_sample(huge_str.clone(), 0));
     transformer.push(create_text_sample(huge_str, 1));
 

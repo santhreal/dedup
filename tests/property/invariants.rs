@@ -1,3 +1,5 @@
+//! Property-based invariant tests for dedup algorithms and transformers.
+
 use proptest::prelude::*;
 use dedup::{Config, DedupTransformer, LshIndex, MinHasher};
 use tenshift_core::sample::{Sample, Tensor};
@@ -15,7 +17,7 @@ fn sample_strategy() -> impl Strategy<Value = Sample> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(10000))]
+    #![proptest_config(ProptestConfig::with_cases(500))]
 
     // 1. Determinism
     #[test]

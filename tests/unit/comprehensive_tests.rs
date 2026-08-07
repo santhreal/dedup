@@ -492,7 +492,7 @@ fn lsh_finds_similar_documents() {
     assert!(sim > 0.7, "Documents should have high similarity: {}", sim);
     
     index.insert(sig1).unwrap();
-    let candidates = index.insert(sig2).unwrap();
+    let _candidates = index.insert(sig2).unwrap();
     
     // With high similarity, LSH should find them as candidates
     // Note: LSH is probabilistic, so we check the similarity threshold was met

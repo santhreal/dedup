@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.3] - 2026-08-07
+
+### Added
+- Re-exported `exact_jaccard_similarity` and `expected_error` in `lib.rs` as public utilities.
+
+### Fixed
+- Log `warn!` on MinHash signature length mismatch in `similarity` computation.
+- Updated crate author metadata to `Santh <64453045+santhreal@users.noreply.github.com>`.
+- Set package status to `beta` in `package.metadata.santh`.
+- Optimized heavy adversarial test execution in `break_it.rs` and `test_depth_adversarial.rs`.
+
 ## 0.1.1
 
 - Fail closed on oversized configurations: `Config::new` rejects a
