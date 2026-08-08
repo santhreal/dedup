@@ -140,4 +140,4 @@ MIT License - See LICENSE file for details.
 
 ## Authors
 
-Santh <contact@santh.dev>
+Santh <64453045+santhreal@users.noreply.github.com>

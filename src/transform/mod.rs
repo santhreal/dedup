@@ -147,9 +147,66 @@ impl DedupTransformer {
         Ok(!is_duplicate)
     }
 
-    /// Add a sample to the buffer for batch processing.
+    /// Add a sample to the buffer for batch processing, or process immediately
+    /// if streaming mode is enabled.
     pub fn push(&mut self, sample: Sample) {
-        self.buffer.push(sample);
+        if self.streaming {
+            let doc_id = self.next_doc_id;
+            self.next_doc_id = self.next_doc_id.saturating_add(1);
+
+            let mut is_dup = false;
+            let mut processed = false;
+
+            if let Ok(text) = self.extract_text(&sample) {
+                if !text.is_empty() {
+                    if let Ok(sig) = self.hasher.compute_str(&text, doc_id) {
+                        if let Ok(candidates) = self.index.insert(sig) {
+                            processed = true;
+                            for candidate_id in candidates {
+                                if let Some(sim) = self.index.verify_similarity(candidate_id, doc_id) {
+                                    if sim >= self.config.similarity_threshold {
+                                        is_dup = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !processed {
+                match sample.get(&self.text_field) {
+                    Some(text) => {
+                        let raw_bytes = text.as_bytes().to_vec();
+                        if let Entry::Vacant(slot) = self.bypassed_samples.entry(raw_bytes) {
+                            slot.insert(doc_id);
+                        } else {
+                            is_dup = true;
+                        }
+                    }
+                    None => {}
+                }
+            }
+
+            if self.mark_duplicates {
+                let tag_val: u8 = if is_dup { 1 } else { 0 };
+                let tagged = sample.with(
+                    "is_duplicate",
+                    tenshift_core::sample::Tensor::u8(vec![tag_val], vec![1]),
+                );
+                self.output_queue.push(tagged);
+            } else if !is_dup {
+                self.output_queue.push(sample);
+            }
+        } else {
+            self.buffer.push(sample);
+        }
+    }
+
+    /// Drain any pending output samples produced in streaming mode.
+    pub fn drain_streaming(&mut self) -> Vec<Sample> {
+        std::mem::take(&mut self.output_queue)
     }
 
     /// Process all buffered samples and return deduplicated results.
@@ -157,14 +214,14 @@ impl DedupTransformer {
     /// This computes signatures for all samples, builds the LSH index,
     /// finds clusters, and returns only unique samples.
     pub fn finish_batch(&mut self) -> Vec<Sample> {
+        let mut result = std::mem::take(&mut self.output_queue);
+
         if self.buffer.is_empty() {
-            return Vec::new();
+            return result;
         }
 
         // Assign document IDs for this batch to avoid collisions with prior inserts
         let start_doc_id = self.next_doc_id;
-        // Saturating like `process_sample`: a counter pinned at usize::MAX
-        // must not panic or wrap doc ids into already-issued ones.
         let batch_end = start_doc_id.saturating_add(self.buffer.len());
         
         let mut uninserted_docs = Vec::new();
@@ -178,12 +235,6 @@ impl DedupTransformer {
                 if !text.is_empty() {
                     // Compute signature; if document is too short, treat as unique
                     if let Ok(sig) = self.hasher.compute_str(&text, doc_id) {
-                        // Law-10: do NOT swallow an insert error and mark the doc
-                        // inserted. A failed LSH insert (e.g. length-validated
-                        // reject) must not silently drop the document. Only mark
-                        // inserted on success; on error the doc falls through to
-                        // the byte-exact bypass path below (preserved + content-
-                        // deduped), never lost.
                         if self.index.insert(sig).is_ok() {
                             inserted = true;
                         }
@@ -194,8 +245,6 @@ impl DedupTransformer {
             if !inserted {
                 // Document bypassed LSH (empty text, hash error, or no text field).
                 match sample.get(&self.text_field) {
-                    // Field present (possibly empty): dedup by its exact bytes so
-                    // identical bypassed content collapses to a single unique doc.
                     Some(text) => {
                         let raw_bytes = text.as_bytes().to_vec();
                         if let Entry::Vacant(slot) = self.bypassed_samples.entry(raw_bytes) {
@@ -203,10 +252,6 @@ impl DedupTransformer {
                             uninserted_docs.push(doc_id);
                         }
                     }
-                    // Field absent: there is nothing to compare on. Collapsing
-                    // these under one empty key silently dropped every field-less
-                    // sample after the first (they are distinct documents that
-                    // merely lack the text field). Keep each one as unique.
                     None => {
                         uninserted_docs.push(doc_id);
                     }
@@ -224,12 +269,27 @@ impl DedupTransformer {
         let mut unique_indices = self.index.get_unique_indices();
         unique_indices.extend(uninserted_docs);
         
-        // Collect unique samples that belong to this batch
-        let mut result = Vec::with_capacity(unique_indices.len());
-        for doc_id in unique_indices {
-            if doc_id >= start_doc_id && doc_id < batch_end {
-                let buf_idx = doc_id - start_doc_id;
-                result.push(std::mem::take(&mut self.buffer[buf_idx]));
+        if self.mark_duplicates {
+            let unique_set: std::collections::HashSet<usize> = unique_indices.into_iter().collect();
+            result.reserve(self.buffer.len());
+            for i in 0..self.buffer.len() {
+                let doc_id = start_doc_id.saturating_add(i);
+                let is_dup = !unique_set.contains(&doc_id);
+                let tag_val: u8 = if is_dup { 1 } else { 0 };
+                let mut sample = std::mem::take(&mut self.buffer[i]);
+                sample = sample.with(
+                    "is_duplicate",
+                    tenshift_core::sample::Tensor::u8(vec![tag_val], vec![1]),
+                );
+                result.push(sample);
+            }
+        } else {
+            result.reserve(unique_indices.len());
+            for doc_id in unique_indices {
+                if doc_id >= start_doc_id && doc_id < batch_end {
+                    let buf_idx = doc_id - start_doc_id;
+                    result.push(std::mem::take(&mut self.buffer[buf_idx]));
+                }
             }
         }
 

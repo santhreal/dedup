@@ -192,6 +192,13 @@
         let good = create_signature((0..128).map(|i| i as u32).collect(), 1);
         assert!(index.insert(good).is_ok());
     }
+    #[test]
+    fn query_rejects_wrong_length_signature() {
+        let index = create_index();
+        let bad = create_signature((0..64).map(|i| i as u32).collect(), 0);
+        let candidates = index.query(&bad);
+        assert!(candidates.is_empty(), "mismatched query signature returns empty candidates");
+    }
 
     #[test]
     fn dense_component_forms_one_cluster_without_losing_nodes() {

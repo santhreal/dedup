@@ -231,3 +231,50 @@
             "two present-but-empty text fields are identical content and dedup to one"
         );
     }
+    #[test]
+    fn mark_duplicates_tags_all_samples_with_is_duplicate_tensor() {
+        let config = Config::default();
+        let mut transformer = DedupTransformer::new(config)
+            .unwrap()
+            .with_mark_duplicates(true);
+
+        transformer.push(create_text_sample("unique document a", 0));
+        transformer.push(create_text_sample("unique document b", 1));
+        transformer.push(create_text_sample("unique document a", 2)); // Duplicate of 0
+
+        let result = transformer.finish_batch();
+        assert_eq!(result.len(), 3, "mark_duplicates preserves all 3 samples in batch");
+
+        // Verify doc 0 (unique) is tagged 0
+        let s0 = &result[0];
+        let tag0 = s0.get("is_duplicate").expect("is_duplicate tensor present");
+        assert_eq!(tag0.as_bytes(), &[0]);
+
+        // Verify doc 1 (unique) is tagged 0
+        let s1 = &result[1];
+        let tag1 = s1.get("is_duplicate").expect("is_duplicate tensor present");
+        assert_eq!(tag1.as_bytes(), &[0]);
+
+        // Verify doc 2 (dup) is tagged 1
+        let s2 = &result[2];
+        let tag2 = s2.get("is_duplicate").expect("is_duplicate tensor present");
+        assert_eq!(tag2.as_bytes(), &[1]);
+    }
+
+    #[test]
+    fn streaming_mode_buffers_immediate_output() {
+        let config = Config::default();
+        let mut transformer = DedupTransformer::new(config)
+            .unwrap()
+            .with_streaming(true);
+
+        transformer.push(create_text_sample("streaming doc one", 0));
+        transformer.push(create_text_sample("streaming doc two", 1));
+        transformer.push(create_text_sample("streaming doc one", 2)); // Duplicate
+
+        let drained = transformer.drain_streaming();
+        assert_eq!(drained.len(), 2, "streaming mode output queue has 2 unique samples");
+
+        let finish_res = transformer.finish_batch();
+        assert!(finish_res.is_empty(), "finish_batch is empty after drain_streaming");
+    }

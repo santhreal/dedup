@@ -221,8 +221,17 @@ impl LshIndex {
     /// Returns document indices that collided with the given signature
     /// in at least one LSH bucket.
     pub fn query(&self, signature: &MinHashSignature) -> Vec<usize> {
-        let mut candidates = std::collections::HashSet::new();
+        let expected_len = self.num_bands * self.rows_per_band;
+        if signature.len() != expected_len {
+            warn!(
+                sig_len = signature.len(),
+                expected_len = expected_len,
+                "LshIndex::query called with signature length mismatched with index configuration"
+            );
+            return Vec::new();
+        }
 
+        let mut candidates = std::collections::HashSet::new();
         for band_idx in 0..self.num_bands {
             let start = band_idx * self.rows_per_band;
             let band_hash = signature.band_hash(start, self.rows_per_band);
